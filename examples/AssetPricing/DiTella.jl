@@ -2,7 +2,7 @@ using EconPDEs, Distributions
 
 mutable struct DiTellaModel
   # Utility Function
-  γ::Float64 
+  γ::Float64
   ψ::Float64
   ρ::Float64
   τ::Float64

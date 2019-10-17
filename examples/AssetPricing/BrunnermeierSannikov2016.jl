@@ -1,44 +1,64 @@
-using EconPDEs, Distributions
+using EconPDEs, Distributions, Parameters
 
-mutable struct DiTellaModel
+# This script implements a generalization of the model presented
+# in the Handbook of Macro Vol. 2 chapter
+# "Macro, Money, and Finance: A Continuous Time Approach"
+# by Brunnermeier and Sannikov.
+
+# The model includes agent-specific risk aversion, EIS,
+# discount rates, depreciation, consumption good productivity,
+# and volatility of capital holdings.
+
+macro instantiate_parameters(m)
+    for name in fieldnames(m)
+        eval(:$(name) = $(m.name))
+    end
+end
+
+mutable struct BrunnermeierSannikov2016Model
   # Utility Function
-  γ::Float64
-  ψ::Float64
-  ρ::Float64
-  τ::Float64
+  γₑ::Float64
+  ψₑ::Float64
+  ρₑ::Float64
+  γₕ::Float64
+  ψₕ::Float64
+  ρₕ::Float64
 
   # Technology
+  aₑ::Float64
+  aₕ::Float64
+  σₑ::Float64
+  σₕ::Float64
+  δₑ::Float64
+  δₕ::Float64
   A::Float64
-  σ::Float64
+  B::Float64
 
-  # MoralHazard
-  ϕ::Float64
-
-  # Idiosyncratic
-  νbar::Float64
-  κν::Float64
-  σνbar::Float64
+  # "Skin in the game" constraint
+  χ::Float64
 end
 
-function DiTellaModel(;γ = 5.0, ψ = 1.5, ρ = 0.05, τ = 0.4, A = 200.0, σ = 0.03, ϕ = 0.2, νbar = 0.24, κν = 0.22, σνbar = -0.13)
-  DiTellaModel(γ, ψ, ρ, τ, A, σ, ϕ, νbar, κν, σνbar)
+function BrunnermeierSannikov2016Model(; γₑ = 2.0, γₕ = 2., ψₑ = 1.5, ψₕ = 1.5, ρₑ = 0.05, ρₕ = .05,
+                                       aₑ = 1, aₕ = .7, σₑ = 0.03, σₕ = 0.03, δₑ = 0.1, δₕ = 0.1, A = 57., B = 5200.,
+                                       χ = 1.)
+    BrunnermeierSannikov2016Model(γₑ = 2.0, γₕ = 2., ψₑ = 1.5, ψₕ = 1.5, ρₑ = 0.05, ρₕ = .05,
+                                  aₑ = 1, aₕ = .7, σₑ = 0.03, σₕ = 0.03, δₑ = 0.1, δₕ = 0.1, A = 57., B = 5200.,
+                                  χ = 1.)
 end
 
-function initialize_stategrid(m::DiTellaModel; xn = 80, νn = 10)
-  γ = m.γ ; ψ = m.ψ ; ρ = m.ρ ; τ = m.τ ; A = m.A ; σ = m.σ ; ϕ = m.ϕ ; νbar = m.νbar ; κν = m.κν ; σνbar = m.σνbar
-  distribution = Gamma(2 * κν * νbar / σνbar^2, σνbar^2 / (2 * κν))
-  νmin = quantile(distribution, 0.001)
-  νmax = quantile(distribution, 0.999)
-  OrderedDict(:x => range(0.01, stop = 0.99, length = xn), :ν => range(νmin, stop = νmax, length = νn))
+function initialize_stategrid(m::DiTellaModel; η_n = 80)
+  OrderedDict(:η => range(0.001, stop = 0.999, length = η_n))
 end
 
-function initialize_y(m::DiTellaModel, stategrid::OrderedDict)
-  x = fill(1.0, length(stategrid[:x]), length(stategrid[:ν]))
-  OrderedDict(:pA => x, :pB => x, :p => x)
+function initialize_y(m::BrunnermeierSannikov2016Model, stategrid::OrderedDict)
+  x = fill(1.0, length(stategrid[:η]))
+  OrderedDict(:vₑ => x, :vₕ => x, :q => x)
 end
 
-function (m::DiTellaModel)(state::NamedTuple, y::NamedTuple)
-  γ = m.γ ; ψ = m.ψ ; ρ = m.ρ ; τ = m.τ ; A = m.A ; σ = m.σ ; ϕ = m.ϕ ; νbar = m.νbar ; κν = m.κν ; σνbar = m.σνbar
+function (m::BrunnermeierSannikov2016Model)(state::NamedTuple, y::NamedTuple)
+    γₑ = m.γₑ; γₕ = m.γₕ; ψₑ = m.
+
+
   x, ν = state.x, state.ν
   pA, pAx, pAν, pAxx, pAxν, pAνν, pB, pBx, pBν, pBxx, pBxν, pBνν, p, px, pν, pxx, pxν, pνν = y.pA, y.pAx, y.pAν, y.pAxx, y.pAxν, y.pAνν, y.pB, y.pBx, y.pBν, y.pBxx, y.pBxν, y.pBνν, y.p, y.px, y.pν, y.pxx, y.pxν, y.pνν
 
